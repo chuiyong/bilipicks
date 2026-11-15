@@ -160,9 +160,10 @@ h1,h2,h3,p{margin:0}
 <section class="panel" id="panel" hidden>
   <div class="panel-box">
     <h2>设置</h2>
-    <div class="tile pitem f"><b id="p-upd-t">应用更新</b><small id="p-upd-s"></small><i class="reddot" id="p-upd-dot" hidden></i></div>
+    <div class="tile pitem f" id="p-age" data-pi="0"><b id="p-age-t">年龄段</b><small id="p-age-s"></small></div>
+    <div class="tile pitem" id="p-upd" data-pi="1" style="margin-top:.7rem"><b id="p-upd-t">应用更新</b><small id="p-upd-s"></small><i class="reddot" id="p-upd-dot" hidden></i></div>
     <p class="pnote" id="p-note"></p>
-    <p class="phint">OK 确认 · 返回键关闭</p>
+    <p class="phint">OK 确认 · ▲▼ 选择 · 返回键关闭</p>
   </div>
 </section>
 <div class="toast" id="toast"></div>
@@ -232,10 +233,29 @@ function loadData() {
 }
 
 var D, byId = {}, stages = [], pathItems = [], pathInfo = {};
+// ---------- 年龄段：每个年龄段有自己的视频、分类、路线（右上角设置里切换） ----------
+var AGE_KEY = 'bilipicks-age';
+var AGES = [], age = '';
+function ageBand() {
+  for (var i = 0; i < AGES.length; i++) if (AGES[i].id === age) return AGES[i];
+  return AGES[0] || {label: ''};
+}
+function inBand(v) {
+  var b = ageBand();
+  return v.minAge >= (b.min || 0) && v.minAge <= (b.max == null ? 9999 : b.max);
+}
+function bandVideos() { return D.videos.filter(function (v) { return inBand(v); }); }
+function pathTitle() { return (D.path && D.path[age] && D.path[age].title) || ''; }
 function prepare(data) {
   D = data;
-  D.videos.forEach(function (v) { byId[v.id] = v; });
-  var path = D.path || {stages: []};
+  AGES = (D.site && D.site.ages) || [{id: '', label: '', min: 0}];
+  age = store.get(AGE_KEY, null);
+  var ok = false;
+  for (var i = 0; i < AGES.length; i++) if (AGES[i].id === age) ok = true;
+  if (!ok) age = (D.site && D.site.defaultAge) || AGES[0].id;
+  byId = {}; pathInfo = {}; pathItems = []; stages = [];
+  D.videos.forEach(function (v) { if (inBand(v)) byId[v.id] = v; });
+  var path = (D.path && D.path[age]) || (D.path && !D.path[AGES[0].id] && D.path) || {stages: []};
   stages = path.stages.map(function (st, si) {
     var s = {no: si + 1, name: st.name, icon: st.icon || '', age: st.age || '', later: !!st.later, hue: HUES[si % 9], hue2: HUES2[si % 9], vids: [], notes: {}};
     st.items.forEach(function (it) {
@@ -246,7 +266,7 @@ function prepare(data) {
       pathItems.push(v);
     });
     return s;
-  });
+  }).filter(function (s) { return s.vids.length; });
 }
 var stageOf = function (v) { return v && pathInfo[v.id] ? stages[pathInfo[v.id].stage - 1] : null; };
 var doneCount = function (list) { return list.filter(function (v) { return isDone(v.id); }).length; };
@@ -289,8 +309,11 @@ function renderHome() {
   stages.forEach(function (st) {
     if (st.vids.length) lists.push({name: '第 ' + st.no + ' 关 · ' + st.name, sub: st.age, hue: st.hue, list: st.vids, path: true});
   });
-  D.categories.forEach(function (c, ci) {
-    var vs = D.videos.filter(function (v) { return !v.dead && v.category === c; });
+  var cats = D.categories.filter(function (c) {
+    return bandVideos().some(function (v) { return !v.dead && v.category === c; });
+  });
+  cats.forEach(function (c, ci) {
+    var vs = bandVideos().filter(function (v) { return !v.dead && v.category === c; });
     if (vs.length) lists.push({name: c, sub: vs.length + ' 条', hue: HUES[(ci + 5) % 9], list: vs, path: false});
   });
   lists.forEach(function (L, li) {
@@ -393,10 +416,10 @@ function homeKey(k) {
       if (el.getAttribute('data-act') === 'settings') { openPanel(); return; }
       if (el.getAttribute('data-act') === 'continue') { var v = nextUndone(); play(pathItems, pathItems.indexOf(v), '成长路线', true); }
       else if (el.getAttribute('data-act') === 'random') {
-        var pool = D.videos.filter(function (v) { return !v.dead && !isDone(v.id); });
-        if (!pool.length) pool = D.videos.filter(function (v) { return !v.dead; });
+        var pool = bandVideos().filter(function (v) { return !v.dead && !isDone(v.id); });
+        if (!pool.length) pool = bandVideos().filter(function (v) { return !v.dead; });
         var pick = pool[Math.floor(Math.random() * pool.length)];
-        var cat = D.videos.filter(function (v) { return !v.dead && v.category === pick.category; });
+        var cat = bandVideos().filter(function (v) { return !v.dead && v.category === pick.category; });
         play(cat, cat.indexOf(pick), pick.category, false);
       } else {
         var st = stages[+el.getAttribute('data-stage') - 1];
@@ -631,6 +654,28 @@ var APP = window.BiliPicksApp || null;
 var APK_URL = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'BiliPicks-tv.apk';
 var upd = {busy: false, latest: null, hasNew: false};
 var panelOpen = false;
+var PANEL_ITEMS = ['p-age', 'p-upd'];
+var panelFocus = 0;
+function setPanelFocus(i) {
+  panelFocus = Math.max(0, Math.min(i, PANEL_ITEMS.length - 1));
+  PANEL_ITEMS.forEach(function (id, j) { $('#' + id).classList.toggle('f', j === panelFocus); });
+}
+// 年龄段切换
+function paintAgeItem() {
+  $('#p-age-t').textContent = '年龄段：' + (ageBand().label || '默认');
+  $('#p-age-s').textContent = '按 OK 切换 · 每个年龄段有自己的分类、路线和频道';
+}
+function cycleAge() {
+  var i = 0;
+  for (var j = 0; j < AGES.length; j++) if (AGES[j].id === age) i = j;
+  age = AGES[(i + 1) % AGES.length].id;
+  store.set(AGE_KEY, age);
+  prepare(D);
+  $('#sub').textContent = (pathTitle() ? pathTitle() + ' · ' : '') + '电视版';
+  renderHome();
+  paintAgeItem();
+  toast('已切换到「' + ageBand().label + '」');
+}
 function setDot(on) {
   upd.hasNew = on;
   ['#gear-dot', '#p-upd-dot'].forEach(function (sel) { var e = $(sel); if (e) e.hidden = !on; });
@@ -651,6 +696,7 @@ function paintIdle() {
   } else {  // 普通浏览器
     paintUpd('安卓电视 / 投影仪应用', '下载 ' + APK_URL + '，用 U 盘装上：遥控器更顺手，OK 能暂停，◀ ▶ 能快进');
   }
+  paintAgeItem();
   $('#p-note').textContent = '视频清单在网站上更新，不用重装应用 · 看完的进度存在这台设备上 · BiliPicks 不是 B 站官方产品';
 }
 function checkUpd() {
@@ -664,12 +710,16 @@ function checkUpd() {
 function openPanel() {
   panelOpen = true;
   if (!upd.busy) paintIdle();
+  setPanelFocus(panelFocus);
   $('#panel').hidden = false;
 }
 function closePanel() { panelOpen = false; $('#panel').hidden = true; }
 function panelKey(k) {
   if (k === 'back' || k === 'menu') { closePanel(); return; }
+  if (k === 'up') { setPanelFocus(panelFocus - 1); return; }
+  if (k === 'down') { setPanelFocus(panelFocus + 1); return; }
   if (k !== 'ok') return;
+  if (panelFocus === 0) { cycleAge(); return; }
   if (APP) { doUpdate(); return; }
   toast(IN_APP ? '这一版要先用 U 盘或 adb 装一次新版' : '在电视上装 BiliPicks 应用才能用', 5000);
 }
@@ -702,7 +752,7 @@ setInterval(tick, 15000);
 if (CAN_SEEK) { $('#k-lr').textContent = '快退 / 快进'; $('#k-down').textContent = '选集 · 换一条'; }
 loadData().then(function (data) {
   prepare(data);
-  $('#sub').textContent = (D.path && D.path.title ? D.path.title + ' · ' : '') + '电视版';
+  $('#sub').textContent = (pathTitle() ? pathTitle() + ' · ' : '') + '电视版';
   $('#msg').hidden = true;
   renderHome();
   checkUpd();
