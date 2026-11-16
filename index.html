@@ -387,6 +387,19 @@ body.tv .tv-bar{position:fixed;left:0;right:0;bottom:0;height:60px;z-index:61;di
   body.tv .slide.active .player{height:calc(100vh - 60px)}
   @media(max-width:760px){.sheet-panel{max-height:78vh}}
 }
+/* ---------- 书架 ---------- */
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.bcard{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.bk{aspect-ratio:3/4;border-radius:6px 12px 12px 6px;background:linear-gradient(155deg,var(--c1),var(--c2));color:#fff;display:flex;flex-direction:column;justify-content:center;padding:12px 14px 12px 20px;position:relative;overflow:hidden}
+.bk::before{content:"";position:absolute;left:9px;top:0;bottom:0;width:2px;background:rgba(255,255,255,.35)}
+.bk .kind{position:absolute;top:10px;left:20px;font-size:.72rem;font-weight:800;opacity:.85;letter-spacing:.05em}
+.bk b{font-size:1.08rem;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.18);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bk i{font-style:normal;font-size:.78rem;opacity:.88;margin-top:6px}
+.bcard .t{font-weight:700;line-height:1.4}
+.bcard .a{font-size:.85rem;color:var(--muted)}
+.bcard .d{font-size:.88rem;line-height:1.5;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.brow{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
+.bp{color:var(--accent);font-weight:800}
 @supports not (color:color-mix(in srgb,red,red)){
   .stage-pill{background:var(--soft);color:var(--h)}
   .top,.tabs{background:var(--surface)}
@@ -429,6 +442,8 @@ body.tv .tv-bar{position:fixed;left:0;right:0;bottom:0;height:60px;z-index:61;di
 
   <section id="view-tiers" hidden><div class="page wide" id="tiers-root"></div></section>
 
+  <section id="view-book" hidden><div class="page" id="book-root"></div></section>
+
   <section id="view-about" hidden>
     <div class="page prose">
       <h1>为什么做 BiliPicks</h1>
@@ -459,7 +474,7 @@ body.tv .tv-bar{position:fixed;left:0;right:0;bottom:0;height:60px;z-index:61;di
       <h2 class="sec">没放进来的</h2>
       <p>低龄营销向动画、法律/职场/战争黑色幽默、地缘政治、志怪恐怖（含名字像儿童故事的）、纯数码评测、来源不明的同名杂号、标题写着「全 500 集」「学完就业」的卖课合集，都不收。</p>
       <h2 class="sec">更新记录</h2>
-      <p>2026-11-08 整理频道与代表作。11-09 按小升初重新筛选，加入 AI 入门。11-10 加入成长路线和频道榜。11-12 路线重排成 9 关，开头先看 AI 有多厉害，加入卡帕西、李宏毅、吴恩达、StatQuest 等 16 条和每关的动手任务；页面改成浅色，播放页支持上滑切换。11-15 全站改为 5 岁版本：重新筛掉全部超龄内容，换成儿歌、绘本、动物、恐龙星空、数学和科学启蒙等 21 条适龄视频，成长路线重排成 6 关，频道榜重新分档。</p>
+      <p>2026-11-08 整理频道与代表作。11-09 按小升初重新筛选，加入 AI 入门。11-10 加入成长路线和频道榜。11-12 路线重排成 9 关，开头先看 AI 有多厉害，加入卡帕西、李宏毅、吴恩达、StatQuest 等 16 条和每关的动手任务；页面改成浅色，播放页支持上滑切换。11-15 全站改为 5 岁版本：重新筛掉全部超龄内容，换成儿歌、绘本、动物、恐龙星空、数学和科学启蒙等 21 条适龄视频，成长路线重排成 6 关，频道榜重新分档。后同日改成年龄段开关：3~5 / 6~8 / 9 岁以上三档内容共存，原版内容恢复为 9 岁以上段。并新增「书架」页，按年龄段展示书目，点击去电商平台购买。</p>
       <p>目录思路参考 <a href="https://karpathy.ai/tristan-tube/" target="_blank" rel="noopener noreferrer">TristanTube</a>：人来挑，不靠推荐。本站不是 B 站官方产品。</p>
       <p id="about-credit"></p>
       <p>BiliPicks 是开源项目，可以复制一份改成你自己的清单：改 <code>data.js</code> 就行。</p>
@@ -523,6 +538,7 @@ const NAV = [
   {view: 'path', label: '路线', icon: '<path d="M6 21V4m0 1h12l-2.5 3.5L18 12H6"/>'},
   {view: 'watch', label: '播放', icon: '<path d="M7 4.5v15l12-7.5z"/>'},
   {view: 'tiers', label: '频道榜', icon: '<path d="M5 20v-8m7 8V4m7 16v-11"/>'},
+  {view: 'book', label: '书架', icon: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM20 18v3H6.5a2.5 2.5 0 0 1-2.45-3"/>'},
   {view: 'about', label: '关于', icon: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-9.5v.5"/>'},
 ];
 const VIEWS = NAV.map(n => n.view);
@@ -827,6 +843,26 @@ function renderTiers() {
     <p class="fine">这个榜只收 UP 主自己经营的频道。低龄内容大量依赖品牌方官方号（贝乐虎、兔小贝、儿歌多多）和译制搬运（BBC、NHK），搬运号有可能失效，失效的会自动隐藏。标「搬运」的视频都注明了原作者。</p>`;
 }
 
+// ---------- 书架 ----------
+function renderBooks() {
+  const list = (DATA.books && DATA.books[age]) || [];
+  const b = ageBand(age);
+  $('#book-root').innerHTML = `
+    <h1>书架</h1>
+    <p class="lead">给「${esc(b.label)}」挑的书，点击去电商平台购买。价格为参考价，以商品页为准；换年龄段，右上角切换。</p>
+    ${list.length ? `<div class="bgrid">${list.map((bk, i) => `
+      <div class="bcard">
+        <span class="bk" style="--c1:${HUES[i % HUES.length]};--c2:${HUES[(i + 5) % HUES.length]}">
+          <span class="kind">${esc(bk.kind || '书')}</span><b>${esc(bk.title)}</b><i>${esc(bk.author)}</i>
+        </span>
+        <span class="t">${esc(bk.title)}</span>
+        <span class="a">${esc(bk.author)}</span>
+        <span class="d">${esc(bk.desc)}</span>
+        <span class="brow"><span class="bp">${esc(bk.price)}</span><a class="btn sm" href="${esc(bk.url)}" target="_blank" rel="noopener noreferrer">去买</a></span>
+      </div>`).join('')}</div>`
+    : '<p class="empty">这个年龄段的书还在挑，先看看视频吧。</p>'}`;
+}
+
 function renderAbout() {
   const s = DATA.site || {};
   const who = [s.curator, s.curatorHandle].filter(Boolean);
@@ -1074,7 +1110,7 @@ function render(arg) {
     if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   VIEWS.forEach(name => { $('#view-' + name).hidden = state.view !== name; });
-  ({home: renderHome, path: renderPath, tiers: renderTiers, about: renderAbout, watch: renderFeed})[state.view](arg);
+  ({home: renderHome, path: renderPath, tiers: renderTiers, book: renderBooks, about: renderAbout, watch: renderFeed})[state.view](arg);
 }
 function go(view, {push = true, restore = false, id, arg} = {}) {
   if (state.tv) setTV(false);
