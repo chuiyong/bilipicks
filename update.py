@@ -17,7 +17,7 @@
       --orig   搬运、译制的视频写上原作者（比如 "Andrej Karpathy"），页面会标出来
       --page   多 P 视频默认播第几 P（比如 Mark Rober 的中文配音在第 2P）
       --stage  同时加进「成长路线」第几阶段（从 1 开始数）
-      --band   加进哪个年龄段的路线（3-5 / 6-8 / 9+），默认用 site.defaultAge
+      --band   加进哪个年龄段的路线（0-2 / 3-5 / 6-8 / 9-15 / 15+），默认用 site.defaultAge
 
 请求 B 站公开接口时会放慢节奏（每个请求间隔约半秒），只读公开信息，不登录。
 """
@@ -320,7 +320,7 @@ def main():
     a.add_argument("--caution", help="家长提示")
     a.add_argument("--page", type=int, help="默认播第几 P")
     a.add_argument("--stage", type=int, help="加进成长路线第几阶段")
-    a.add_argument("--band", help="成长路线年龄段 id（3-5 / 6-8 / 9+），默认用 site.defaultAge")
+    a.add_argument("--band", help="成长路线年龄段 id（0-2 / 3-5 / 6-8 / 9-15 / 15+），默认用 site.defaultAge")
     a.add_argument("--note", help="在成长路线里的说明，默认用推荐理由")
     a.add_argument("--title", help="自己写的标题，默认用 B 站标题")
     a.add_argument("--orig", help="搬运、译制视频的原作者")
